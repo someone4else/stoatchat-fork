@@ -27,30 +27,38 @@ pub async fn set_role_permissions(
 
     permissions.throw_if_lacking_channel_permission(ChannelPermission::ManagePermissions)?;
 
-    if let Some(server) = query.server_ref() {
-        if let Some(role) = server.roles.get(&role_id) {
-            if role.rank <= query.get_member_rank().unwrap_or(i64::MIN) {
-                return Err(create_error!(NotElevated));
-            }
-
-            let current_value: Override = role.permissions.into();
-            permissions
-                .throw_permission_override(current_value, &data.permissions)
-                .await?;
-
-            let mut new_channel = channel.clone();
-
-            new_channel
-                .set_role_permission(db, &role_id, data.permissions.clone().into())
-                .await?;
-
-            sync_voice_permissions(db, voice_client, &new_channel, Some(server), Some(&role_id)).await?;
-
-            Ok(Json(new_channel.into()))
-        } else {
-            Err(create_error!(NotFound))
-        }
+    // Fetch the server: try query cache first, then fetch directly.
+    // Privileged users skip set_server_from_channel in calculate_channel_permissions,
+    // so the query may not have the server loaded.
+    let server_id = channel.server().ok_or_else(|| create_error!(InvalidOperation))?;
+    let fetched_server;
+    let server = if let Some(cow) = query.server_ref() {
+        &**cow
     } else {
-        Err(create_error!(InvalidOperation))
+        fetched_server = db.fetch_server(server_id).await?;
+        &fetched_server
+    };
+
+    if let Some(role) = server.roles.get(&role_id) {
+        if role.rank <= query.get_member_rank().unwrap_or(i64::MIN) {
+            return Err(create_error!(NotElevated));
+        }
+
+        let current_value: Override = role.permissions.into();
+        permissions
+            .throw_permission_override(current_value, &data.permissions)
+            .await?;
+
+        let mut new_channel = channel.clone();
+
+        new_channel
+            .set_role_permission(db, &role_id, data.permissions.clone().into())
+            .await?;
+
+        sync_voice_permissions(db, voice_client, &new_channel, Some(server), Some(&role_id)).await?;
+
+        Ok(Json(new_channel.into()))
+    } else {
+        Err(create_error!(NotFound))
     }
 }
