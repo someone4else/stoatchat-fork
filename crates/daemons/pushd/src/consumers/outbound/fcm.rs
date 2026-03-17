@@ -5,7 +5,7 @@ use amqprs::{channel::Channel as AmqpChannel, consumer::AsyncConsumer, BasicProp
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use fcm_v1::{
-    android::{AndroidConfig, AndroidMessagePriority},
+    android::{AndroidConfig, AndroidMessagePriority, AndroidNotification},
     auth::{Authenticator, ServiceAccountKey},
     message::{Message, Notification},
     Client, Error as FcmError,
@@ -163,6 +163,11 @@ impl FcmOutboundConsumer {
                     }),
                     android: Some(AndroidConfig {
                         collapse_key: Some(alert.tag),
+                        priority: Some(AndroidMessagePriority::High),
+                        notification: Some(AndroidNotification {
+                            channel_id: Some("chat.stoat.c2dm.conversations.messages".to_string()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
                     ..Default::default()
