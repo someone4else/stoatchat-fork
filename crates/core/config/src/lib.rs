@@ -141,6 +141,10 @@ pub struct Hosts {
 #[derive(Deserialize, Debug, Clone)]
 pub struct ApiRegistration {
     pub invite_only: bool,
+    /// Server ID to automatically join new users to during onboarding
+    pub default_server: Option<String>,
+    /// Whether server creation is restricted to privileged users only
+    pub restrict_server_creation: bool,
 }
 
 #[derive(Deserialize, Debug, Clone)]

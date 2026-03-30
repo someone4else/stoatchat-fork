@@ -1,7 +1,8 @@
 use authifier::models::Session;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use revolt_database::{Database, User};
+use revolt_config::config;
+use revolt_database::{Database, Member, User};
 use revolt_models::v0;
 use revolt_result::{create_error, Result};
 
@@ -45,10 +46,18 @@ pub async fn complete(
         })
     })?;
 
-    Ok(Json(
-        User::create(db, data.username, session.user_id, None)
-            .await?
-            .into_self(false)
-            .await,
-    ))
+    let user = User::create(db, data.username, session.user_id, None).await?;
+
+    // Auto-join the user to the default server if configured
+    let cfg = config().await;
+    if let Some(ref server_id) = cfg.api.registration.default_server {
+        if !server_id.is_empty() {
+            if let Ok(server) = db.fetch_server(server_id).await {
+                // Silently ignore errors (e.g. already a member, banned)
+                let _ = Member::create(db, &server, &user, None).await;
+            }
+        }
+    }
+
+    Ok(Json(user.into_self(false).await))
 }

@@ -36,6 +36,10 @@ password = "rabbitpass"
 # Whether an invite should be required for registration
 # See https://github.com/stoatchat/self-hosted#making-your-instance-invite-only
 invite_only = false
+# Server ID to automatically join new users to during onboarding
+# default_server = ""
+# Whether server creation is restricted to privileged users only
+restrict_server_creation = false
 
 [api.smtp]
 # Email server configuration for verification
